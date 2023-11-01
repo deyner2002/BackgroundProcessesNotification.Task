@@ -11,4 +11,9 @@
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Enum\" />
+    <Folder Include="Model\" />
+  </ItemGroup>
 </Project>
