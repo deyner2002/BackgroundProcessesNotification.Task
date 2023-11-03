@@ -4,7 +4,7 @@ public sealed class ScopedBackgroundService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScopedBackgroundService> _logger;
-    private readonly PeriodicTimer _timer = new(TimeSpan.FromMinutes(1));
+    private readonly PeriodicTimer _timer = new(TimeSpan.FromMinutes(2));
 
     public ScopedBackgroundService(
         IServiceProvider serviceProvider,

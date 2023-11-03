@@ -1,5 +1,6 @@
 using App.ScopedService;
 using Confluent.Kafka;
+using Microsoft.Extensions.Configuration;
 
 IHostBuilder builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
@@ -13,6 +14,8 @@ IHostBuilder builder = Host.CreateDefaultBuilder(args)
         kafkaConfig.BootstrapServers = configuration.GetValue<string>("Kafka:BootstrapServers");
 
         kafkaConfig.BootstrapServers = "localhost:9092";
+
+        services.Configure<MongoDBSettings>(configuration.GetSection("MongoDBSettings"));
         services.AddSingleton<IProducer<string, string>>(new ProducerBuilder<string, string>(kafkaConfig).Build());
     });
 
