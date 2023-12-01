@@ -1,9 +1,11 @@
-﻿using APIEmisorKafka.Models;
+﻿using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
+using APIEmisorKafka.Enum;
+using APIEmisorKafka.Models;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
-using MongoDB.Bson.IO;
 using MongoDB.Driver;
+using RestSharp;
 
 namespace App.ScopedService
 {
@@ -45,10 +47,15 @@ namespace App.ScopedService
 
                 var notifications = collectionNotification.Find(Builders<Notification>.Filter.Empty).ToList();
 
-                notifications = notifications.Where(item => newExecution.StartDate <= item.ProgrammingInfo.ActivationTime && item.ProgrammingInfo.ActivationTime <= newExecution.EndDate).ToList();
+                notifications = notifications.Where(item => newExecution.StartDate <= item.ProgrammingInfo.ActivationTime && item.ProgrammingInfo.ActivationTime <= newExecution.EndDate && item.ProgrammingInfo.Active).ToList();
 
                 foreach (var notification in notifications)
                 {
+                    if (notification.GetObject)
+                    {
+                        notification.Object = GetObject(notification.GetObjectUrl);
+                    }
+
                     var message = new Message<string, string>
                     {
                         Key = null,
@@ -56,6 +63,48 @@ namespace App.ScopedService
                     };
 
                     await _kafkaProducer.ProduceAsync("test-kafka", message);
+
+                    if(notification.ProgrammingInfo.IsRecurring)
+                    {
+                        switch (notification.ProgrammingInfo.Recurrence)
+                        {
+                            case Recurrence.Annual:
+                                notification.ProgrammingInfo.ActivationTime = notification.ProgrammingInfo.ActivationTime.AddYears(1);
+                                break;
+                            case Recurrence.Monthly:
+                                notification.ProgrammingInfo.ActivationTime = notification.ProgrammingInfo.ActivationTime.AddMonths(1);
+                                break;
+                            case Recurrence.Diary:
+                                notification.ProgrammingInfo.ActivationTime = notification.ProgrammingInfo.ActivationTime.AddDays(1);
+                                break;
+                            case Recurrence.Hourly:
+                                notification.ProgrammingInfo.ActivationTime = notification.ProgrammingInfo.ActivationTime.AddHours(1);
+                                break;
+                            default:
+                                break;
+                        }
+
+                        if (notification.ProgrammingInfo.ActivationTime > notification.ProgrammingInfo.EndDate)
+                        {
+                            var filter = Builders<Notification>.Filter.Eq("_id", notification.Id);
+                            collectionNotification.DeleteOne(filter);
+                        }
+                        else
+                        {
+                            var filter = Builders<Notification>.Filter.Eq("_id", notification.Id);
+
+                            var update = Builders<Notification>.Update
+                                .Set("ProgrammingInfo.ActivationTime", notification.ProgrammingInfo.ActivationTime)
+                                .CurrentDate("CampoFechaActualizacion");
+
+                            var resultUpdate = collectionNotification.UpdateOne(filter, update);
+                        }
+                    }
+                    else
+                    {
+                        var filter = Builders<Notification>.Filter.Eq("_id", notification.Id);
+                        collectionNotification.DeleteOne(filter);
+                    }
                 }
 
                 collectionHistory.InsertOne(newExecution);
@@ -64,6 +113,19 @@ namespace App.ScopedService
             {
 
             }
+        }
+
+        private static string GetObject(string Url)
+        {
+            Uri uri = new Uri(Url);
+
+            var restClient = new RestClient(uri.GetLeftPart(UriPartial.Authority));
+
+            var request = new RestRequest(uri.PathAndQuery, Method.Get);
+
+            var response = restClient.Execute(request);
+
+            return response.Content;
         }
     }
 }
