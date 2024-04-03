@@ -1,6 +1,6 @@
 using App.ScopedService;
 using Confluent.Kafka;
-using Microsoft.Extensions.Configuration;
+using Azure.Identity;
 
 IHostBuilder builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
@@ -11,11 +11,21 @@ IHostBuilder builder = Host.CreateDefaultBuilder(args)
         var configuration = new ConfigurationBuilder()
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                     .Build();
-        kafkaConfig.BootstrapServers = configuration.GetValue<string>("Kafka:BootstrapServers");
 
-        kafkaConfig.BootstrapServers = "localhost:9092";
+        IConfiguration config = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(options =>
+                {
+                    options.Connect(configuration.GetValue<string>("AppConfigsAzure"))
+                   .ConfigureKeyVault(kv =>
+                   {
+                        kv.SetCredential(new DefaultAzureCredential());
+                   });
+                })
+            .Build();
 
-        services.Configure<MongoDBSettings>(configuration.GetSection("MongoDBSettings"));
+        kafkaConfig.BootstrapServers = config.GetValue<string>("kafka:configuration:BootstrapServers");
+
+        services.Configure<MongoDBSettings>(config.GetSection("mongo:configuration"));
         services.AddSingleton<IProducer<string, string>>(new ProducerBuilder<string, string>(kafkaConfig).Build());
     });
 

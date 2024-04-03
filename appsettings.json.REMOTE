@@ -1,0 +1,9 @@
+{
+  "AppConfigsAzure": "Endpoint=https://appconfigs-notifications.azconfig.io;Id=qMsH;Secret=1ShiqAgsLlidJDs3B5vC21DJ08D1WmfNZipXVdXc/2I=",
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}

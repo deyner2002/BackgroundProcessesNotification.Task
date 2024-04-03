@@ -36,6 +36,13 @@ namespace App.ScopedService
 
                 IMongoCollection<ExecutionHistory> collectionHistory = database.GetCollection<ExecutionHistory>(_mongoDBSettings.CollectionNameHistory);
 
+                var indexKeysDefinition = Builders<ExecutionHistory>.IndexKeys.Descending(r => r.EndDate);
+                var indexOptions = new CreateIndexOptions { Unique = false }; // Ajusta las opciones según tus necesidades
+
+                var createIndexModel = new CreateIndexModel<ExecutionHistory>(indexKeysDefinition, indexOptions);
+
+                await collectionHistory.Indexes.CreateOneAsync(createIndexModel);
+
                 var result = collectionHistory.Find(Builders<ExecutionHistory>.Filter.Empty)
                     .Sort(Builders<ExecutionHistory>.Sort.Descending(r => r.EndDate)).FirstOrDefault();
 
